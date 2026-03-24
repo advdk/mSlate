@@ -1,0 +1,323 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: file:;">
+    <title>mSlate</title>
+  </head>
+  <body>
+    <header id="titlebar">
+      <div id="titlebar-left" class="titlebar-section no-drag">
+        <button id="titlebar-app" class="titlebar-app-button" type="button" aria-label="mSlate menu">
+          <svg class="titlebar-app-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="4" fill="#007acc"></rect>
+            <path d="M8 8.5H16" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"></path>
+            <path d="M8 12H13.5" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"></path>
+            <path d="M8 15.5H16" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"></path>
+          </svg>
+        </button>
+        <nav id="titlebar-menus" aria-label="Application menu">
+          <button class="titlebar-menu-button" data-menu="file" type="button">File</button>
+          <button class="titlebar-menu-button" data-menu="edit" type="button">Edit</button>
+          <button class="titlebar-menu-button" data-menu="view" type="button">View</button>
+          <button class="titlebar-menu-button" data-menu="help" type="button">Help</button>
+        </nav>
+        <button id="titlebar-overflow" class="titlebar-overflow-button" type="button" aria-label="More menus" aria-expanded="false" title="More menus">⋯</button>
+      </div>
+      <div id="titlebar-center" class="titlebar-section no-drag">
+        <label id="titlebar-search-shell" for="titlebar-search">
+          <span id="titlebar-search-icon" aria-hidden="true">⌕</span>
+          <input id="titlebar-search" type="text" placeholder="Search notes" autocomplete="off" />
+        </label>
+      </div>
+      <div id="titlebar-right" class="titlebar-section no-drag">
+        <div id="window-controls">
+          <button id="window-minimize" class="window-control-button" type="button" aria-label="Minimize">─</button>
+          <button id="window-maximize" class="window-control-button" type="button" aria-label="Restore or maximize">□</button>
+          <button id="window-close" class="window-control-button danger" type="button" aria-label="Close">×</button>
+        </div>
+      </div>
+      <div id="titlebar-menu-popover" class="hidden" role="menu"></div>
+    </header>
+    <div id="zen-drag-strip" aria-hidden="true"></div>
+    <div id="command-palette" class="hidden">
+      <div id="palette-backdrop"></div>
+      <div id="palette-panel">
+        <div id="palette-header">
+          <span id="palette-title">Notes</span>
+          <span id="palette-hint">Ctrl+P</span>
+        </div>
+        <input type="text" id="palette-input" placeholder="Search notes..." autocomplete="off" />
+        <ul id="palette-results"></ul>
+      </div>
+    </div>
+    <div id="settings-modal" class="hidden">
+      <div id="settings-backdrop"></div>
+      <section id="settings-panel" aria-labelledby="settings-title">
+        <header id="settings-header">
+          <div>
+            <h2 id="settings-title">Settings</h2>
+            <p id="settings-subtitle">Search index controls and workspace context.</p>
+          </div>
+          <button id="settings-close" class="icon-button" type="button" aria-label="Close settings">×</button>
+        </header>
+        <div id="settings-body">
+          <div class="settings-section">
+            <span class="settings-label">Notes Folder</span>
+            <span id="settings-notes-folder" class="settings-value"></span>
+          </div>
+          <div class="settings-section grid">
+            <div>
+              <span class="settings-label">Index Status</span>
+              <span id="settings-index-ready" class="settings-value"></span>
+            </div>
+            <div>
+              <span class="settings-label">Indexed Notes</span>
+              <span id="settings-note-count" class="settings-value"></span>
+            </div>
+            <div>
+              <span class="settings-label">Last Indexed</span>
+              <span id="settings-last-indexed" class="settings-value"></span>
+            </div>
+            <div>
+              <span class="settings-label">Index Database</span>
+              <span id="settings-database-path" class="settings-value"></span>
+            </div>
+          </div>
+          <div class="settings-section">
+            <span class="settings-label">Maintenance</span>
+            <div class="settings-actions">
+              <button id="settings-rebuild-index" class="settings-button primary" type="button">Rebuild Index</button>
+              <button id="settings-clear-index" class="settings-button" type="button">Clear Index</button>
+              <button id="settings-import-markdown" class="settings-button" type="button">Import Markdown</button>
+            </div>
+          </div>
+          <div class="settings-section">
+            <span class="settings-label">Beta</span>
+            <fieldset class="beta-panel" disabled>
+              <legend class="settings-label subtle">AI Tools</legend>
+              <label class="table-field" for="beta-ai-api-key">
+                <span class="settings-label subtle">Anthropic API Key</span>
+                <input id="beta-ai-api-key" type="password" placeholder="sk-ant-..." autocomplete="off" />
+              </label>
+              <label class="table-field" for="beta-ai-model">
+                <span class="settings-label subtle">Model</span>
+                <input id="beta-ai-model" type="text" placeholder="claude-3-5-sonnet-latest" autocomplete="off" />
+              </label>
+              <p class="beta-hint">AI features are in beta and currently disabled.</p>
+              <div class="settings-actions">
+                <button class="settings-button primary" type="button">Save Beta Settings</button>
+              </div>
+            </fieldset>
+          </div>
+          <p id="settings-message" aria-live="polite"></p>
+        </div>
+      </section>
+    </div>
+    <div id="import-modal" class="hidden">
+      <div id="import-backdrop"></div>
+      <section id="import-panel" aria-labelledby="import-title">
+        <header id="import-header">
+          <div>
+            <h2 id="import-title">Import Markdown Notes</h2>
+            <p id="import-subtitle">Review dated markdown files before importing them into mSlate.</p>
+          </div>
+          <button id="import-close" class="icon-button" type="button" aria-label="Close import review">×</button>
+        </header>
+        <div id="import-body">
+          <div class="settings-section">
+            <span class="settings-label">Source Folder</span>
+            <span id="import-source-folder" class="settings-value"></span>
+          </div>
+          <div class="settings-section">
+            <span class="settings-label">Valid Markdown Files</span>
+            <div id="import-valid-files" class="import-list"></div>
+          </div>
+          <div class="settings-section">
+            <span class="settings-label">Invalid Markdown Files</span>
+            <div id="import-invalid-files" class="import-list"></div>
+          </div>
+          <div class="settings-actions">
+            <button id="import-apply" class="settings-button primary" type="button">Apply Import</button>
+            <button id="import-cancel" class="settings-button" type="button">Cancel</button>
+          </div>
+          <p id="import-message" aria-live="polite"></p>
+        </div>
+      </section>
+    </div>
+    <div id="table-modal" class="hidden">
+      <div id="table-backdrop"></div>
+      <section id="table-panel" aria-labelledby="table-title">
+        <header id="table-header">
+          <div>
+            <h2 id="table-title">Insert Table</h2>
+            <p id="table-subtitle">Choose the size of the markdown table to insert.</p>
+          </div>
+          <button id="table-close" class="icon-button" type="button" aria-label="Close table dialog">×</button>
+        </header>
+        <div id="table-body">
+          <label class="settings-section table-field" for="table-rows-input">
+            <span class="settings-label">Rows</span>
+            <input id="table-rows-input" type="number" min="1" max="20" value="3" />
+          </label>
+          <label class="settings-section table-field" for="table-columns-input">
+            <span class="settings-label">Columns</span>
+            <input id="table-columns-input" type="number" min="1" max="10" value="3" />
+          </label>
+          <div class="settings-actions">
+            <button id="table-insert-apply" class="settings-button primary" type="button">Insert Table</button>
+            <button id="table-insert-cancel" class="settings-button" type="button">Cancel</button>
+          </div>
+          <p id="table-message" aria-live="polite"></p>
+        </div>
+      </section>
+    </div>
+    <div id="new-note-modal" class="hidden">
+      <div id="new-note-backdrop"></div>
+      <section id="new-note-panel" aria-labelledby="new-note-title">
+        <header id="new-note-header">
+          <div>
+            <h2 id="new-note-title">Create Note</h2>
+            <p id="new-note-subtitle">Journal mode stays automatic. Use this for named notes like project plans or references.</p>
+          </div>
+          <button id="new-note-close" class="icon-button" type="button" aria-label="Close create note dialog">×</button>
+        </header>
+        <div id="new-note-body">
+          <label class="settings-section table-field" for="new-note-title-input">
+            <span class="settings-label">Note Title</span>
+            <input id="new-note-title-input" type="text" maxlength="120" placeholder="Postgres usage" />
+          </label>
+          <p id="new-note-hint">Filename will be generated as a slug like <strong>postgres-usage.md</strong>.</p>
+          <div class="settings-actions">
+            <button id="new-note-create" class="settings-button primary" type="button">Create Note</button>
+            <button id="new-note-cancel" class="settings-button" type="button">Cancel</button>
+          </div>
+          <p id="new-note-message" aria-live="polite"></p>
+        </div>
+      </section>
+    </div>
+    <div id="help-drawer" class="hidden">
+      <div id="help-backdrop"></div>
+      <aside id="help-panel" aria-labelledby="help-title">
+        <header id="help-header">
+          <div>
+            <h2 id="help-title">Markdown Help</h2>
+            <p id="help-subtitle">Quick syntax reference for notes, links, images, and tables.</p>
+          </div>
+          <button id="help-close" class="icon-button" type="button" aria-label="Close markdown help">×</button>
+        </header>
+        <div id="help-body">
+          <section class="help-section">
+            <h3>Text</h3>
+            <pre># Heading 1
+## Heading 2
+**Bold**
+*Italic*
+~~Strikethrough~~</pre>
+          </section>
+          <section class="help-section">
+            <h3>Lists and Quotes</h3>
+            <pre>- Bullet item
+- Another item
+
+1. Numbered item
+2. Next item
+
+> Callout or quote</pre>
+          </section>
+          <section class="help-section">
+            <h3>Links and Images</h3>
+            <pre>[mSlate](https://example.com)
+![Diagram](attachments/example.png)
+
+&lt;img src="image-url" alt="Alt Text" width="300" height="200"&gt;
+
+Paste an image from the clipboard:
+Ctrl+V</pre>
+          </section>
+          <section class="help-section">
+            <h3>Code</h3>
+            <pre>`inline code`
+
+```sql
+select * from notes;
+```</pre>
+          </section>
+          <section class="help-section">
+            <h3>Tables</h3>
+            <pre>| Column 1 | Column 2 |
+| --- | --- |
+| Value A | Value B |
+
+Command Palette:
+Insert Table
+
+Right-click inside a table:
+Add Column Right
+Add Row Below</pre>
+          </section>
+          <section class="help-section compact">
+            <h3>Shortcuts</h3>
+            <pre>Ctrl+P         Search notes
+Ctrl+Shift+P   Command palette
+Ctrl+N         Create note
+Ctrl+,         Settings
+Ctrl+Shift+V   Preview
+Ctrl+Alt+/     Markdown help</pre>
+          </section>
+        </div>
+      </aside>
+    </div>
+    <div id="table-context-menu" class="hidden" role="menu" aria-label="Table actions">
+      <button id="table-add-column-right" class="table-context-item" type="button">Add Column Right</button>
+      <button id="table-add-row-below" class="table-context-item" type="button">Add Row Below</button>
+    </div>
+    <div id="app-notice" class="hidden" aria-live="polite"></div>
+    <div id="app">
+      <div id="workspace">
+        <aside id="sidebar">
+          <div id="sidebar-header">
+            <div id="sidebar-actions">
+              <button id="sidebar-new-note-button" class="sidebar-header-button hidden" type="button">New</button>
+              <button id="sidebar-delete-note-button" class="sidebar-header-button hidden" type="button">Delete</button>
+            </div>
+          </div>
+          <ul id="note-list"></ul>
+        </aside>
+        <main id="editor-area">
+          <div id="editor-container"></div>
+          <div id="preview-container" class="hidden" aria-live="polite"></div>
+        </main>
+      </div>
+      <footer id="status-bar">
+        <div id="status-actions-left">
+          <div id="sidebar-mode-toggle" aria-label="Note mode switcher">
+            <button id="sidebar-journal-button" class="sidebar-mode-button active" type="button" aria-pressed="true">Journal</button>
+            <button id="sidebar-notes-button" class="sidebar-mode-button" type="button" aria-pressed="false">Notes</button>
+          </div>
+        </div>
+        <span id="status-save"></span>
+        <div id="status-actions">
+          <button id="preview-toggle-button" class="status-action status-icon-button" type="button" aria-label="Toggle preview mode" aria-pressed="false" title="Preview mode">
+            <svg class="status-icon" viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="1.5" y="2" width="13" height="11.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+              <path d="M4 5.2H7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>
+              <path d="M4 7.8H6.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>
+              <path d="M9 8.3C9.8 7.1 10.8 6.5 12 6.5C13.2 6.5 14.2 7.1 15 8.3C14.2 9.5 13.2 10.1 12 10.1C10.8 10.1 9.8 9.5 9 8.3Z" transform="translate(-1.5 0)" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"></path>
+              <circle cx="10.5" cy="8.3" r="0.9" fill="currentColor"></circle>
+            </svg>
+          </button>
+          <button id="help-button" class="status-action status-icon-button" type="button" aria-label="Markdown help" title="Markdown help">?</button>
+          <button id="zen-toggle-button" class="status-action status-icon-button" type="button" aria-label="Toggle zen mode" aria-pressed="false" title="Zen mode">
+            <svg class="status-icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 6V3H6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M10 3H13V6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M13 10V13H10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M6 13H3V10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

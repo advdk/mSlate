@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:;">
+    <title>Slate</title>
+  <script defer src="renderer.js"></script></head>
+  <body>
+    <div id="command-palette" class="hidden">
+      <div id="palette-backdrop"></div>
+      <div id="palette-panel">
+        <input type="text" id="palette-input" placeholder="Search notes..." autocomplete="off" />
+        <ul id="palette-results"></ul>
+      </div>
+    </div>
+    <div id="app">
+      <aside id="sidebar">
+        <ul id="note-list"></ul>
+      </aside>
+      <main id="editor-area">
+        <div id="editor-container"></div>
+        <footer id="status-bar">
+          <span id="status-date"></span>
+          <span id="status-wordcount"></span>
+          <span id="status-save"></span>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>
