@@ -1,7 +1,7 @@
 {
   "name": "mslate",
   "productName": "mSlate",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A minimalist desktop markdown editor for daily notes",
   "main": ".webpack/main",
   "private": true,
