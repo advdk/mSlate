@@ -409,7 +409,9 @@ function postJson<T>(urlString: string, headers: Record<string, string>, body: u
         });
         response.on('end', () => {
           const raw = Buffer.concat(chunks).toString('utf-8');
-          const parsed = raw ? JSON.parse(raw) as { error?: { message?: string } } & T : {} as T;
+          const parsed: T & { error?: { message?: string } } = raw
+            ? JSON.parse(raw) as T & { error?: { message?: string } }
+            : {} as T & { error?: { message?: string } };
           if ((response.statusCode ?? 500) >= 400) {
             reject(new Error(parsed.error?.message || `Anthropic request failed with status ${response.statusCode ?? 500}`));
             return;
