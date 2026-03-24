@@ -71,6 +71,14 @@ This launches the desktop app with real file I/O.
 npm run make
 ```
 
+### Publish A GitHub Release
+
+```bash
+npm run publish
+```
+
+This uses Electron Forge publishing and is intended for GitHub Releases.
+
 ### Lint
 
 ```bash
@@ -157,6 +165,27 @@ The markdown files remain authoritative. The database exists only to speed up se
 - `src/renderer.ts`: UI, editor behavior, palettes, settings, preview, and status bar interactions
 - `src/mock-api.ts`: browser-mode implementation for fast renderer development
 - `src/main/search-index.ts`: SQLite-backed search index implementation
+
+## Releases And Auto-Updates
+
+- Packaged Windows and macOS builds check for updates from GitHub Releases
+- Auto-update checks are enabled only in packaged app builds, not during local development
+- GitHub Releases must use valid semver tags such as `v0.1.1`
+- Releases must not be drafts or prereleases if you want them to be picked up by the public Electron update service
+- The repository used for release publishing and update checks is `advdk/mSlate`
+
+### Release Flow
+
+1. Update the version in [package.json](package.json)
+2. Commit and push your changes
+3. Create and push a semver tag such as `v0.1.1`
+4. The release workflow in [.github/workflows/release.yml](.github/workflows/release.yml) publishes artifacts to GitHub Releases
+
+### Notes
+
+- Windows auto-update works with the existing Squirrel maker output
+- macOS auto-update requires properly signed builds for production use
+- Linux builds can still be published, but in-app auto-update is not enabled by the current setup
 
 ## Project Structure
 

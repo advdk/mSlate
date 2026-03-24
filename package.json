@@ -5,6 +5,11 @@
   "description": "A minimalist desktop markdown editor for daily notes",
   "main": ".webpack/main",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/advdk/mSlate.git"
+  },
+  "homepage": "https://github.com/advdk/mSlate",
   "scripts": {
     "dev": "webpack serve --config webpack.dev.config.ts",
     "start": "electron-forge start",
@@ -29,6 +34,7 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
     "@electron-forge/plugin-fuses": "^7.11.1",
     "@electron-forge/plugin-webpack": "^7.11.1",
+    "@electron-forge/publisher-github": "^7.11.1",
     "@electron/fuses": "^1.8.0",
     "@types/better-sqlite3": "^7.6.13",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
@@ -58,6 +64,7 @@
     "codemirror": "^6.0.2",
     "dompurify": "^3.3.3",
     "electron-squirrel-startup": "^1.0.1",
-    "marked": "^17.0.5"
+    "marked": "^17.0.5",
+    "update-electron-app": "^3.1.2"
   }
 }

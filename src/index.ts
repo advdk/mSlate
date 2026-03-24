@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, ipcMain, dialog, nativeTheme, shell } from 'e
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
+import { updateElectronApp, UpdateSourceType } from 'update-electron-app';
 import { SearchIndex } from './main/search-index';
 import type { IndexedNoteRecord, SearchIndexStatus } from './main/search-index';
 import type { ClaudeNotesAnswer, ClaudeSettings, MarkdownImportDecision, MarkdownImportInvalidFile, MarkdownImportResult, MarkdownImportScanResult } from './preload';
@@ -873,6 +874,36 @@ ipcMain.handle('toggle-pin', async (_event, filename: string) => {
 let mainWindow: BrowserWindow | null = null;
 let notesWatcher: fs.FSWatcher | null = null;
 let searchSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+let autoUpdateInitialized = false;
+
+function initializeAutoUpdates(): void {
+  if (autoUpdateInitialized) {
+    return;
+  }
+
+  if (!app.isPackaged) {
+    return;
+  }
+
+  if (process.platform !== 'win32' && process.platform !== 'darwin') {
+    return;
+  }
+
+  try {
+    updateElectronApp({
+      updateSource: {
+        type: UpdateSourceType.ElectronPublicUpdateService,
+        repo: 'advdk/mSlate',
+      },
+      updateInterval: '1 hour',
+      notifyUser: true,
+      logger: console,
+    });
+    autoUpdateInitialized = true;
+  } catch (error) {
+    console.error('Failed to initialize auto-updates:', error);
+  }
+}
 
 function scheduleSearchIndexSync(): void {
   if (searchSyncTimeout) clearTimeout(searchSyncTimeout);
@@ -1122,6 +1153,8 @@ const createWindow = (): void => {
 };
 
 app.on('ready', createWindow);
+
+app.on('ready', initializeAutoUpdates);
 
 app.on('before-quit', () => {
   stopWatchingNotes();
