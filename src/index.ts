@@ -5,7 +5,7 @@ import * as https from 'https';
 import { updateElectronApp, UpdateSourceType } from 'update-electron-app';
 import { SearchIndex } from './main/search-index';
 import type { IndexedNoteRecord, SearchIndexStatus } from './main/search-index';
-import type { ClaudeNotesAnswer, ClaudeSettings, MarkdownImportDecision, MarkdownImportInvalidFile, MarkdownImportResult, MarkdownImportScanResult } from './preload';
+import type { ClaudeNotesAnswer, ClaudeSettings, EditorSettings, MarkdownImportDecision, MarkdownImportInvalidFile, MarkdownImportResult, MarkdownImportScanResult } from './preload';
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron';
 import { compareNoteFilenames, createUniqueGeneralNoteFilename, getNoteFolder, getNoteSummary, getTodayFilename, isJournalFilename, isNotePath, normalizeNotePath, type NoteSearchResult, type NoteSummary } from './shared/notes';
 
@@ -26,11 +26,15 @@ interface AppSettings {
   notesFolder: string;
   noteTemplate: string;
   pinnedNotes: string[];
+  editorFontFamily: string;
+  editorFontSize: number;
   claudeApiKey: string;
   claudeModel: string;
 }
 
 const DEFAULT_CLAUDE_MODEL = 'claude-3-5-sonnet-latest';
+const DEFAULT_EDITOR_FONT_FAMILY = "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace";
+const DEFAULT_EDITOR_FONT_SIZE = 15;
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 const searchIndexPath = path.join(app.getPath('userData'), 'search-index.db');
 const searchIndex = new SearchIndex(searchIndexPath);
@@ -43,6 +47,8 @@ function loadSettings(): AppSettings {
     notesFolder: defaultFolder,
     noteTemplate: '',
     pinnedNotes: [],
+    editorFontFamily: DEFAULT_EDITOR_FONT_FAMILY,
+    editorFontSize: DEFAULT_EDITOR_FONT_SIZE,
     claudeApiKey: '',
     claudeModel: DEFAULT_CLAUDE_MODEL,
   };
@@ -55,6 +61,15 @@ function loadSettings(): AppSettings {
         notesFolder: typeof parsed.notesFolder === 'string' && parsed.notesFolder ? parsed.notesFolder : defaultSettings.notesFolder,
         noteTemplate: typeof parsed.noteTemplate === 'string' ? parsed.noteTemplate : defaultSettings.noteTemplate,
         pinnedNotes: Array.isArray(parsed.pinnedNotes) ? parsed.pinnedNotes : defaultSettings.pinnedNotes,
+        editorFontFamily: typeof parsed.editorFontFamily === 'string' && parsed.editorFontFamily.trim()
+          ? parsed.editorFontFamily.trim()
+          : defaultSettings.editorFontFamily,
+        editorFontSize: typeof parsed.editorFontSize === 'number'
+          && Number.isFinite(parsed.editorFontSize)
+          && parsed.editorFontSize >= 10
+          && parsed.editorFontSize <= 32
+          ? parsed.editorFontSize
+          : defaultSettings.editorFontSize,
         claudeApiKey: typeof parsed.claudeApiKey === 'string' ? parsed.claudeApiKey : defaultSettings.claudeApiKey,
         claudeModel: typeof parsed.claudeModel === 'string' && parsed.claudeModel ? parsed.claudeModel : defaultSettings.claudeModel,
       };
@@ -67,6 +82,25 @@ function loadSettings(): AppSettings {
 
 function saveSettings(settings: AppSettings): void {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+}
+
+function getEditorSettings(): EditorSettings {
+  return {
+    fontFamily: settings.editorFontFamily,
+    fontSize: settings.editorFontSize,
+  };
+}
+
+function normalizeEditorSettings(editorSettings: Partial<EditorSettings>): EditorSettings {
+  const trimmedFontFamily = typeof editorSettings.fontFamily === 'string' ? editorSettings.fontFamily.trim() : '';
+  const requestedFontSize = typeof editorSettings.fontSize === 'number' ? editorSettings.fontSize : Number.NaN;
+
+  return {
+    fontFamily: trimmedFontFamily || DEFAULT_EDITOR_FONT_FAMILY,
+    fontSize: Number.isFinite(requestedFontSize)
+      ? Math.min(32, Math.max(10, Math.round(requestedFontSize)))
+      : DEFAULT_EDITOR_FONT_SIZE,
+  };
 }
 
 const settings = loadSettings();
@@ -785,6 +819,18 @@ ipcMain.handle('get-template', () => {
 ipcMain.handle('set-template', async (_event, template: string) => {
   settings.noteTemplate = template;
   saveSettings(settings);
+});
+
+ipcMain.handle('get-editor-settings', () => {
+  return getEditorSettings();
+});
+
+ipcMain.handle('set-editor-settings', async (_event, editorSettings: EditorSettings) => {
+  const nextSettings = normalizeEditorSettings(editorSettings);
+  settings.editorFontFamily = nextSettings.fontFamily;
+  settings.editorFontSize = nextSettings.fontSize;
+  saveSettings(settings);
+  return nextSettings;
 });
 
 ipcMain.handle('get-claude-settings', () => {

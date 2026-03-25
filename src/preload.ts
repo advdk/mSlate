@@ -61,6 +61,11 @@ export interface ClaudeSettings {
   model: string;
 }
 
+export interface EditorSettings {
+  fontFamily: string;
+  fontSize: number;
+}
+
 export interface ClaudeNotesAnswer {
   answer: string;
   sources: string[];
@@ -86,6 +91,8 @@ export interface SlateAPI {
   chooseNotesFolder(): Promise<string | null>;
   getTemplate(): Promise<string>;
   setTemplate(template: string): Promise<void>;
+  getEditorSettings(): Promise<EditorSettings>;
+  setEditorSettings(settings: EditorSettings): Promise<EditorSettings>;
   getClaudeSettings(): Promise<ClaudeSettings>;
   setClaudeSettings(settings: ClaudeSettings): Promise<void>;
   summarizeSelection(selection: string, filename?: string): Promise<string>;
@@ -126,6 +133,8 @@ const api: SlateAPI = {
   chooseNotesFolder: () => ipcRenderer.invoke('choose-notes-folder'),
   getTemplate: () => ipcRenderer.invoke('get-template'),
   setTemplate: (template: string) => ipcRenderer.invoke('set-template', template),
+  getEditorSettings: () => ipcRenderer.invoke('get-editor-settings'),
+  setEditorSettings: (settings: EditorSettings) => ipcRenderer.invoke('set-editor-settings', settings),
   getClaudeSettings: () => ipcRenderer.invoke('get-claude-settings'),
   setClaudeSettings: (settings: ClaudeSettings) => ipcRenderer.invoke('set-claude-settings', settings),
   summarizeSelection: (selection: string, filename?: string) => ipcRenderer.invoke('claude-summarize-selection', selection, filename),

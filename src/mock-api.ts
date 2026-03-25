@@ -1,4 +1,4 @@
-import type { ClaudeNotesAnswer, ClaudeSettings, MarkdownImportDecision, MarkdownImportResult, MarkdownImportScanResult, SlateAPI, WindowState } from './preload';
+import type { ClaudeNotesAnswer, ClaudeSettings, EditorSettings, MarkdownImportDecision, MarkdownImportResult, MarkdownImportScanResult, SlateAPI, WindowState } from './preload';
 import { compareNoteFilenames, createUniqueGeneralNoteFilename, getNoteFolder, getNoteSummary, getTodayFilename, isNotePath, normalizeNotePath, type NoteSearchResult } from './shared/notes';
 
 const MOCK_INDEX_STATUS_KEY = 'slate-search-index-status';
@@ -6,7 +6,11 @@ const MOCK_IMPORT_SESSION_KEY = 'slate-import-session';
 const ASSET_STORAGE_PREFIX = 'slate-asset:';
 const MOCK_CLAUDE_API_KEY = 'slate-claude-api-key';
 const MOCK_CLAUDE_MODEL = 'slate-claude-model';
+const MOCK_EDITOR_FONT_FAMILY = 'slate-editor-font-family';
+const MOCK_EDITOR_FONT_SIZE = 'slate-editor-font-size';
 const DEFAULT_CLAUDE_MODEL = 'claude-3-5-sonnet-latest';
+const DEFAULT_EDITOR_FONT_FAMILY = "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace";
+const DEFAULT_EDITOR_FONT_SIZE = 15;
 
 /**
  * Mock API for browser-based development.
@@ -126,6 +130,19 @@ function getMockClaudeSettings(): ClaudeSettings {
   return {
     apiKey: localStorage.getItem(MOCK_CLAUDE_API_KEY) ?? '',
     model: localStorage.getItem(MOCK_CLAUDE_MODEL) ?? DEFAULT_CLAUDE_MODEL,
+  };
+}
+
+function getMockEditorSettings(): EditorSettings {
+  const fontFamily = localStorage.getItem(MOCK_EDITOR_FONT_FAMILY)?.trim() || DEFAULT_EDITOR_FONT_FAMILY;
+  const storedFontSize = Number(localStorage.getItem(MOCK_EDITOR_FONT_SIZE));
+  const fontSize = Number.isFinite(storedFontSize)
+    ? Math.min(32, Math.max(10, Math.round(storedFontSize)))
+    : DEFAULT_EDITOR_FONT_SIZE;
+
+  return {
+    fontFamily,
+    fontSize,
   };
 }
 
@@ -352,6 +369,25 @@ export const mockApi: SlateAPI = {
 
   setTemplate: async (template: string) => {
     localStorage.setItem('slate-template', template);
+  },
+
+  getEditorSettings: async () => {
+    return getMockEditorSettings();
+  },
+
+  setEditorSettings: async ({ fontFamily, fontSize }: EditorSettings) => {
+    const normalizedFontFamily = fontFamily.trim() || DEFAULT_EDITOR_FONT_FAMILY;
+    const normalizedFontSize = Number.isFinite(fontSize)
+      ? Math.min(32, Math.max(10, Math.round(fontSize)))
+      : DEFAULT_EDITOR_FONT_SIZE;
+
+    localStorage.setItem(MOCK_EDITOR_FONT_FAMILY, normalizedFontFamily);
+    localStorage.setItem(MOCK_EDITOR_FONT_SIZE, String(normalizedFontSize));
+
+    return {
+      fontFamily: normalizedFontFamily,
+      fontSize: normalizedFontSize,
+    };
   },
 
   getClaudeSettings: async () => {

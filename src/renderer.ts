@@ -8,6 +8,7 @@ import { basicSetup } from 'codemirror';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import type {
+  EditorSettings,
   MarkdownImportDecision,
   MarkdownImportResult,
   MarkdownImportScanResult,
@@ -49,6 +50,12 @@ let isPreviewMode = false;
 let isZenMode = false;
 let pendingTableContext: TableContextState | null = null;
 let previewRenderToken = 0;
+let editorSettings: EditorSettings = {
+  fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace",
+  fontSize: 15,
+};
+
+const DEFAULT_EDITOR_FONT_FAMILY = "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace";
 
 // --- DOM refs ---
 
@@ -92,6 +99,9 @@ const paletteResults = document.getElementById('palette-results')!;
 const settingsModal = document.getElementById('settings-modal')!;
 const settingsBackdrop = document.getElementById('settings-backdrop')!;
 const settingsClose = document.getElementById('settings-close') as HTMLButtonElement;
+const settingsEditorFontFamily = document.getElementById('settings-editor-font-family') as HTMLSelectElement;
+const settingsEditorFontSize = document.getElementById('settings-editor-font-size') as HTMLInputElement;
+const settingsSaveEditor = document.getElementById('settings-save-editor') as HTMLButtonElement;
 const settingsNotesFolder = document.getElementById('settings-notes-folder')!;
 const settingsIndexReady = document.getElementById('settings-index-ready')!;
 const settingsNoteCount = document.getElementById('settings-note-count')!;
@@ -177,6 +187,55 @@ interface TableContextState {
   table: ParsedMarkdownTable;
   columnIndex: number;
   rowIndex: number;
+}
+
+function ensureEditorFontFamilyOption(fontFamily: string): void {
+  const normalizedFontFamily = fontFamily.trim() || DEFAULT_EDITOR_FONT_FAMILY;
+  const existingOption = Array.from(settingsEditorFontFamily.options).find((option) => option.value === normalizedFontFamily);
+  const customOption = settingsEditorFontFamily.querySelector('option[data-custom-font="true"]');
+
+  if (existingOption) {
+    customOption?.remove();
+    return;
+  }
+
+  if (customOption instanceof HTMLOptionElement) {
+    customOption.value = normalizedFontFamily;
+    customOption.textContent = `Custom (${normalizedFontFamily})`;
+    return;
+  }
+
+  const option = document.createElement('option');
+  option.value = normalizedFontFamily;
+  option.textContent = `Custom (${normalizedFontFamily})`;
+  option.dataset.customFont = 'true';
+  settingsEditorFontFamily.appendChild(option);
+}
+
+function normalizeEditorSettings(input: Partial<EditorSettings>): EditorSettings {
+  const normalizedFontFamily = typeof input.fontFamily === 'string' && input.fontFamily.trim()
+    ? input.fontFamily.trim()
+    : DEFAULT_EDITOR_FONT_FAMILY;
+  const requestedFontSize = typeof input.fontSize === 'number' ? input.fontSize : Number.parseInt(String(input.fontSize ?? ''), 10);
+
+  return {
+    fontFamily: normalizedFontFamily,
+    fontSize: Number.isFinite(requestedFontSize)
+      ? Math.min(32, Math.max(10, Math.round(requestedFontSize)))
+      : editorSettings.fontSize,
+  };
+}
+
+function applyEditorSettings(nextSettings: EditorSettings): void {
+  editorSettings = normalizeEditorSettings(nextSettings);
+  document.documentElement.style.setProperty('--editor-font-family', editorSettings.fontFamily);
+  document.documentElement.style.setProperty('--editor-font-size', `${editorSettings.fontSize}px`);
+}
+
+function syncEditorSettingsControls(): void {
+  ensureEditorFontFamilyOption(editorSettings.fontFamily);
+  settingsEditorFontFamily.value = editorSettings.fontFamily;
+  settingsEditorFontSize.value = String(editorSettings.fontSize);
 }
 
 // --- Editor Setup ---
@@ -883,12 +942,32 @@ async function refreshSettingsStatus(status?: SearchIndexStatus): Promise<void> 
   settingsDatabasePath.textContent = indexStatus.databasePath;
 }
 
+async function saveEditorSettings(): Promise<void> {
+  const requestedSettings = normalizeEditorSettings({
+    fontFamily: settingsEditorFontFamily.value,
+    fontSize: Number.parseInt(settingsEditorFontSize.value, 10),
+  });
+
+  setSettingsMessage('Saving editor settings...');
+
+  try {
+    const savedSettings = await api.setEditorSettings(requestedSettings);
+    applyEditorSettings(savedSettings);
+    syncEditorSettingsControls();
+    setSettingsMessage('Editor settings saved.');
+    showNotice('Editor settings updated.');
+  } catch (error) {
+    setSettingsMessage(error instanceof Error ? error.message : 'Could not save editor settings.', true);
+  }
+}
+
 async function openSettings(): Promise<void> {
   closeTitlebarMenu();
   closePalette();
   closeHelpDrawer();
   hideTableContextMenu();
   settingsModal.classList.remove('hidden');
+  syncEditorSettingsControls();
   setSettingsMessage('');
   await refreshSettingsStatus();
 }
@@ -1630,6 +1709,21 @@ paletteInput.addEventListener('keydown', (e) => {
 paletteBackdrop.addEventListener('click', closePalette);
 settingsBackdrop.addEventListener('click', closeSettings);
 settingsClose.addEventListener('click', closeSettings);
+settingsSaveEditor.addEventListener('click', () => {
+  void saveEditorSettings();
+});
+settingsEditorFontFamily.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void saveEditorSettings();
+  }
+});
+settingsEditorFontSize.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void saveEditorSettings();
+  }
+});
 helpBackdrop.addEventListener('click', closeHelpDrawer);
 helpClose.addEventListener('click', closeHelpDrawer);
 sidebarJournalButton.addEventListener('click', () => {
@@ -1860,6 +1954,7 @@ function scheduleMidnightRollover(): void {
 // --- Init ---
 
 async function init(): Promise<void> {
+  applyEditorSettings(await api.getEditorSettings());
   await initializeWindowState();
   const todayFile = await api.getToday();
   await refreshNoteList();

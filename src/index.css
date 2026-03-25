@@ -17,6 +17,8 @@
   --note-hover: #232323;
   --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --editor-font-family: var(--font-mono);
+  --editor-font-size: 15px;
 }
 
 *, *::before, *::after {
@@ -785,7 +787,8 @@ body.desktop-frame.zen-mode #workspace {
   gap: 8px;
 }
 
-.table-field input {
+.table-field input,
+.table-field select {
   width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
@@ -793,6 +796,24 @@ body.desktop-frame.zen-mode #workspace {
   background: var(--bg-secondary);
   color: var(--text-primary);
   font: inherit;
+}
+
+.settings-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 12px;
+}
+
+.settings-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .settings-editor-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 #table-message {
@@ -1342,8 +1363,8 @@ body.desktop-frame.zen-mode #workspace {
 /* CodeMirror overrides for Slate dark theme */
 #editor-container .cm-editor {
   height: 100%;
-  font-family: var(--font-mono);
-  font-size: 15px;
+  font-family: var(--editor-font-family);
+  font-size: var(--editor-font-size);
   line-height: 1.6;
 }
 
