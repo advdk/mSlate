@@ -238,6 +238,61 @@ function syncEditorSettingsControls(): void {
   settingsEditorFontSize.value = String(editorSettings.fontSize);
 }
 
+async function persistEditorSettings(
+  requestedSettings: EditorSettings,
+  options?: { notice?: string; successMessage?: string; errorMessage?: string; updateSettingsMessage?: boolean },
+): Promise<boolean> {
+  const updateSettingsMessage = options?.updateSettingsMessage ?? false;
+
+  if (updateSettingsMessage) {
+    setSettingsMessage(options?.successMessage ?? 'Saving editor settings...');
+  }
+
+  try {
+    const savedSettings = await api.setEditorSettings(normalizeEditorSettings(requestedSettings));
+    applyEditorSettings(savedSettings);
+    syncEditorSettingsControls();
+
+    if (updateSettingsMessage) {
+      setSettingsMessage(options?.successMessage ?? 'Editor settings saved.');
+    }
+
+    if (options?.notice) {
+      showNotice(options.notice);
+    }
+
+    return true;
+  } catch (error) {
+    if (updateSettingsMessage) {
+      setSettingsMessage(options?.errorMessage ?? (error instanceof Error ? error.message : 'Could not save editor settings.'), true);
+    } else if (options?.notice) {
+      showNotice(options.errorMessage ?? 'Could not update editor font size.');
+    }
+
+    return false;
+  }
+}
+
+async function adjustEditorFontSize(delta: number): Promise<void> {
+  if (!editorView?.hasFocus) {
+    return;
+  }
+
+  const nextSettings = normalizeEditorSettings({
+    fontFamily: editorSettings.fontFamily,
+    fontSize: editorSettings.fontSize + delta,
+  });
+
+  if (nextSettings.fontSize === editorSettings.fontSize) {
+    return;
+  }
+
+  await persistEditorSettings(nextSettings, {
+    notice: `Editor font size: ${nextSettings.fontSize}px`,
+    errorMessage: 'Could not update editor font size.',
+  });
+}
+
 // --- Editor Setup ---
 
 function createEditor(content: string): EditorView {
@@ -943,22 +998,17 @@ async function refreshSettingsStatus(status?: SearchIndexStatus): Promise<void> 
 }
 
 async function saveEditorSettings(): Promise<void> {
-  const requestedSettings = normalizeEditorSettings({
+  const requestedSettings = {
     fontFamily: settingsEditorFontFamily.value,
     fontSize: Number.parseInt(settingsEditorFontSize.value, 10),
+  };
+
+  await persistEditorSettings(normalizeEditorSettings(requestedSettings), {
+    notice: 'Editor settings updated.',
+    successMessage: 'Editor settings saved.',
+    errorMessage: 'Could not save editor settings.',
+    updateSettingsMessage: true,
   });
-
-  setSettingsMessage('Saving editor settings...');
-
-  try {
-    const savedSettings = await api.setEditorSettings(requestedSettings);
-    applyEditorSettings(savedSettings);
-    syncEditorSettingsControls();
-    setSettingsMessage('Editor settings saved.');
-    showNotice('Editor settings updated.');
-  } catch (error) {
-    setSettingsMessage(error instanceof Error ? error.message : 'Could not save editor settings.', true);
-  }
 }
 
 async function openSettings(): Promise<void> {
@@ -1831,6 +1881,20 @@ api.onWindowStateChanged((state) => {
 // --- Keyboard Shortcuts (global) ---
 
 document.addEventListener('keydown', (e) => {
+  const editorHasFocus = editorView?.hasFocus ?? false;
+
+  if (editorHasFocus && e.ctrlKey && !e.altKey && !e.metaKey && (e.key === '+' || e.key === '=' || e.key === 'Add' || e.code === 'NumpadAdd')) {
+    e.preventDefault();
+    void adjustEditorFontSize(1);
+    return;
+  }
+
+  if (editorHasFocus && e.ctrlKey && !e.altKey && !e.metaKey && (e.key === '-' || e.key === '_' || e.key === 'Subtract' || e.code === 'NumpadSubtract')) {
+    e.preventDefault();
+    void adjustEditorFontSize(-1);
+    return;
+  }
+
   // Command palette: Ctrl+P
   if (e.ctrlKey && !e.shiftKey && e.key === 'p') {
     e.preventDefault();
