@@ -1,11 +1,11 @@
-import { app, BrowserWindow, Menu, ipcMain, dialog, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog, nativeTheme, shell, autoUpdater } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
 import { updateElectronApp, UpdateSourceType } from 'update-electron-app';
 import { SearchIndex } from './main/search-index';
 import type { IndexedNoteRecord, SearchIndexStatus } from './main/search-index';
-import type { ClaudeNotesAnswer, ClaudeSettings, EditorSettings, MarkdownImportDecision, MarkdownImportInvalidFile, MarkdownImportResult, MarkdownImportScanResult } from './preload';
+import type { ClaudeNotesAnswer, ClaudeSettings, EditorSettings, MarkdownImportDecision, MarkdownImportInvalidFile, MarkdownImportResult, MarkdownImportScanResult, UpdateCheckResult } from './preload';
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron';
 import { compareNoteFilenames, createUniqueGeneralNoteFilename, getNoteFolder, getNoteSummary, getTodayFilename, isJournalFilename, isNotePath, normalizeNotePath, type NoteSearchResult, type NoteSummary } from './shared/notes';
 
@@ -923,34 +923,128 @@ let mainWindow: BrowserWindow | null = null;
 let notesWatcher: fs.FSWatcher | null = null;
 let searchSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 let autoUpdateInitialized = false;
+let manualUpdateCheckInFlight: Promise<UpdateCheckResult> | null = null;
+const UPDATE_REPO = 'advdk/mSlate';
+const UPDATE_INTERVAL = '1 hour';
 
-function initializeAutoUpdates(): void {
-  if (autoUpdateInitialized) {
-    return;
-  }
-
+function getAutoUpdateAvailability(): UpdateCheckResult | null {
   if (!app.isPackaged) {
-    return;
+    return {
+      status: 'unavailable',
+      message: 'Update checks are only available in packaged builds.',
+    };
   }
 
   if (process.platform !== 'win32' && process.platform !== 'darwin') {
-    return;
+    return {
+      status: 'unavailable',
+      message: 'Automatic updates are supported only on Windows and macOS.',
+    };
+  }
+
+  return null;
+}
+
+function initializeAutoUpdates(): UpdateCheckResult | null {
+  if (autoUpdateInitialized) {
+    return null;
+  }
+
+  const availability = getAutoUpdateAvailability();
+  if (availability) {
+    return availability;
   }
 
   try {
     updateElectronApp({
       updateSource: {
         type: UpdateSourceType.ElectronPublicUpdateService,
-        repo: 'advdk/mSlate',
+        repo: UPDATE_REPO,
       },
-      updateInterval: '1 hour',
+      updateInterval: UPDATE_INTERVAL,
       notifyUser: true,
       logger: console,
     });
     autoUpdateInitialized = true;
+    return null;
   } catch (error) {
     console.error('Failed to initialize auto-updates:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to initialize auto-updates.',
+    };
   }
+}
+
+async function checkForUpdatesManually(): Promise<UpdateCheckResult> {
+  const availability = getAutoUpdateAvailability();
+  if (availability) {
+    return availability;
+  }
+
+  if (manualUpdateCheckInFlight) {
+    return manualUpdateCheckInFlight;
+  }
+
+  manualUpdateCheckInFlight = new Promise<UpdateCheckResult>((resolve) => {
+    const updaterEvents = autoUpdater as unknown as NodeJS.EventEmitter;
+    const finish = (result: UpdateCheckResult): void => {
+      updaterEvents.removeListener('update-available', handleUpdateAvailable);
+      updaterEvents.removeListener('update-not-available', handleUpdateNotAvailable);
+      updaterEvents.removeListener('error', handleUpdateError);
+      manualUpdateCheckInFlight = null;
+      resolve(result);
+    };
+
+    const handleUpdateAvailable = (_event: unknown, _releaseNotes: string, releaseName: string): void => {
+      const version = typeof releaseName === 'string' && releaseName.trim() ? releaseName.trim() : undefined;
+      finish({
+        status: 'available',
+        version,
+        message: version
+          ? `Update ${version} is available and downloading.`
+          : 'An update is available and downloading.',
+      });
+    };
+
+    const handleUpdateNotAvailable = (): void => {
+      finish({
+        status: 'not-available',
+        message: 'You already have the latest version.',
+      });
+    };
+
+    const handleUpdateError = (_event: unknown, error: Error): void => {
+      finish({
+        status: 'error',
+        message: error instanceof Error && error.message ? error.message : 'Update check failed.',
+      });
+    };
+
+    updaterEvents.once('update-available', handleUpdateAvailable);
+    updaterEvents.once('update-not-available', handleUpdateNotAvailable);
+    updaterEvents.once('error', handleUpdateError);
+
+    const wasInitialized = autoUpdateInitialized;
+    const initializationResult = initializeAutoUpdates();
+    if (initializationResult) {
+      finish(initializationResult);
+      return;
+    }
+
+    if (wasInitialized) {
+      try {
+        autoUpdater.checkForUpdates();
+      } catch (error) {
+        finish({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Update check failed.',
+        });
+      }
+    }
+  });
+
+  return manualUpdateCheckInFlight;
 }
 
 function scheduleSearchIndexSync(): void {
@@ -1015,6 +1109,8 @@ ipcMain.handle('export-pdf', async (_event, filename: string) => {
   fs.writeFileSync(result.filePath, pdfData);
   return true;
 });
+
+ipcMain.handle('check-for-updates', async (): Promise<UpdateCheckResult> => checkForUpdatesManually());
 
 ipcMain.handle('get-window-state', async (event) => {
   const window = getEventWindow(event);
@@ -1113,6 +1209,18 @@ function buildApplicationMenu(): void {
     ? [{ role: 'minimize' }, { role: 'zoom' }, { role: 'front' }, { type: 'separator' }, { role: 'window' }]
     : [{ role: 'minimize' }, { role: 'zoom' }, { role: 'close' }];
   const helpSubmenu: MenuItemConstructorOptions[] = [
+    {
+      label: 'Check for Updates',
+      click: async () => {
+        const result = await checkForUpdatesManually();
+        await dialog.showMessageBox(mainWindow ?? undefined, {
+          type: result.status === 'error' ? 'error' : 'info',
+          title: 'Check for Updates',
+          message: result.message,
+        });
+      },
+    },
+    { type: 'separator' },
     {
       label: 'About mSlate',
       role: 'about',

@@ -50,6 +50,12 @@ export interface WindowState {
   isMaximized: boolean;
 }
 
+export interface UpdateCheckResult {
+  status: 'available' | 'not-available' | 'unavailable' | 'error';
+  message: string;
+  version?: string;
+}
+
 export interface PastedImagePayload {
   filename: string;
   mimeType: string;
@@ -101,6 +107,7 @@ export interface SlateAPI {
   getPinnedNotes(): Promise<string[]>;
   togglePin(filename: string): Promise<string[]>;
   exportPdf(filename: string): Promise<boolean>;
+  checkForUpdates(): Promise<UpdateCheckResult>;
   getWindowState(): Promise<WindowState>;
   minimizeWindow(): Promise<void>;
   toggleMaximizeWindow(): Promise<boolean>;
@@ -143,6 +150,7 @@ const api: SlateAPI = {
   getPinnedNotes: () => ipcRenderer.invoke('get-pinned-notes'),
   togglePin: (filename: string) => ipcRenderer.invoke('toggle-pin', filename),
   exportPdf: (filename: string) => ipcRenderer.invoke('export-pdf', filename),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   getWindowState: () => ipcRenderer.invoke('get-window-state'),
   minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
   toggleMaximizeWindow: () => ipcRenderer.invoke('toggle-maximize-window'),

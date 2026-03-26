@@ -169,6 +169,7 @@ The markdown files remain authoritative. The database exists only to speed up se
 ## Releases And Auto-Updates
 
 - Packaged Windows and macOS builds check for updates from GitHub Releases
+- Packaged Windows and macOS builds can also trigger a manual update check from the command palette or Help menu
 - Auto-update checks are enabled only in packaged app builds, not during local development
 - GitHub Releases must use valid semver tags such as `v0.1.1`
 - Releases must not be drafts or prereleases if you want them to be picked up by the public Electron update service

@@ -38,7 +38,7 @@ let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 let isSaving = false;
 let pinnedNotes: string[] = [];
 let sidebarMode: 'journal' | 'note' = 'journal';
-let lastOpenedByMode: Record<'journal' | 'note', string> = {
+const lastOpenedByMode: Record<'journal' | 'note', string> = {
   journal: '',
   note: '',
 };
@@ -1345,6 +1345,13 @@ async function deleteCurrentNote(): Promise<void> {
   }
 }
 
+async function checkForUpdates(): Promise<void> {
+  closePalette();
+  closeTitlebarMenu();
+  const result = await api.checkForUpdates();
+  showNotice(result.message);
+}
+
 function getCommandItems(): CommandPaletteItem[] {
   return [
     {
@@ -1395,6 +1402,15 @@ function getCommandItems(): CommandPaletteItem[] {
       run: async () => {
         closePalette();
         await openSettings();
+      },
+    },
+    {
+      kind: 'command',
+      id: 'check-for-updates',
+      title: 'Check for Updates',
+      detail: 'Ask the packaged app to check GitHub Releases now.',
+      run: async () => {
+        await checkForUpdates();
       },
     },
     {
@@ -1544,6 +1560,7 @@ function getTitlebarMenuItems(menuId: string): TitlebarMenuItem[] {
     openSettings: async () => openSettings(),
     importMarkdown: async () => openImportPlaceholder(),
     markdownHelp: async () => openHelpDrawer(),
+    checkForUpdates: async () => checkForUpdates(),
     reload: async () => api.reloadWindow(),
     devTools: async () => api.toggleDevTools(),
     toggleSidebar: async () => {
@@ -1582,6 +1599,7 @@ function getTitlebarMenuItems(menuId: string): TitlebarMenuItem[] {
       ];
     case 'help':
       return [
+        { label: 'Check for Updates', action: common.checkForUpdates },
         { label: 'Markdown Help', action: common.markdownHelp },
         {
           label: 'Keyboard Shortcuts',
@@ -1606,6 +1624,7 @@ function getTitlebarMenuItems(menuId: string): TitlebarMenuItem[] {
         { label: 'Edit: Toggle Sidebar', action: common.toggleSidebar },
         { label: 'View: Reload', action: common.reload },
         { label: 'View: Toggle DevTools', action: common.devTools },
+        { label: 'Help: Check for Updates', action: common.checkForUpdates },
         { label: 'Help: Markdown Help', action: common.markdownHelp },
         {
           label: 'Help: Keyboard Shortcuts',

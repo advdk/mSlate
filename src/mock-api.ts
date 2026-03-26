@@ -1,4 +1,4 @@
-import type { ClaudeNotesAnswer, ClaudeSettings, EditorSettings, MarkdownImportDecision, MarkdownImportResult, MarkdownImportScanResult, SlateAPI, WindowState } from './preload';
+import type { ClaudeNotesAnswer, ClaudeSettings, EditorSettings, MarkdownImportDecision, MarkdownImportResult, MarkdownImportScanResult, SlateAPI, UpdateCheckResult, WindowState } from './preload';
 import { compareNoteFilenames, createUniqueGeneralNoteFilename, getNoteFolder, getNoteSummary, getTodayFilename, isNotePath, normalizeNotePath, type NoteSearchResult } from './shared/notes';
 
 const MOCK_INDEX_STATUS_KEY = 'slate-search-index-status';
@@ -123,6 +123,13 @@ function getMockWindowState(): WindowState {
   return {
     isDesktop: false,
     isMaximized: false,
+  };
+}
+
+function getMockUpdateCheckResult(): UpdateCheckResult {
+  return {
+    status: 'unavailable',
+    message: 'Update checks are only available in packaged desktop builds.',
   };
 }
 
@@ -433,6 +440,8 @@ export const mockApi: SlateAPI = {
     console.warn('[mock] exportPdf is not available in browser mode');
     return false;
   },
+
+  checkForUpdates: async () => getMockUpdateCheckResult(),
 
   getWindowState: async () => getMockWindowState(),
 
