@@ -38,6 +38,10 @@ let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 let isSaving = false;
 let pinnedNotes: string[] = [];
 let sidebarMode: 'journal' | 'note' = 'journal';
+let lastOpenedByMode: Record<'journal' | 'note', string> = {
+  journal: '',
+  note: '',
+};
 let paletteMode: 'notes' | 'commands' = 'notes';
 let paletteSelectedIndex = -1;
 let paletteItems: PaletteItem[] = [];
@@ -802,6 +806,7 @@ async function loadNote(filename: string): Promise<void> {
 
   currentFilename = filename;
   currentNote = getNoteSummary(filename);
+  lastOpenedByMode[currentNote.kind] = filename;
   if (sidebarMode !== currentNote.kind) {
     sidebarMode = currentNote.kind;
     renderNoteList();
@@ -939,6 +944,41 @@ function setSidebarMode(mode: 'journal' | 'note'): void {
 
   sidebarMode = mode;
   renderNoteList();
+}
+
+function getPreferredFilenameForMode(mode: 'journal' | 'note'): string {
+  const modeNotes = allNotes.filter((note) => note.kind === mode);
+  if (modeNotes.length === 0) {
+    return '';
+  }
+
+  const preferredFilename = lastOpenedByMode[mode];
+  if (preferredFilename && modeNotes.some((note) => note.filename === preferredFilename)) {
+    return preferredFilename;
+  }
+
+  return modeNotes[0].filename;
+}
+
+async function activateSidebarMode(mode: 'journal' | 'note'): Promise<void> {
+  setSidebarMode(mode);
+
+  const preferredFilename = getPreferredFilenameForMode(mode);
+  if (!preferredFilename) {
+    if (currentNote?.kind !== mode) {
+      await clearActiveNote();
+    } else {
+      highlightActiveNote('');
+    }
+    return;
+  }
+
+  if (currentFilename === preferredFilename) {
+    highlightActiveNote(preferredFilename);
+    return;
+  }
+
+  await loadNote(preferredFilename);
 }
 
 async function refreshNoteList(): Promise<void> {
@@ -1777,10 +1817,10 @@ settingsEditorFontSize.addEventListener('keydown', (event) => {
 helpBackdrop.addEventListener('click', closeHelpDrawer);
 helpClose.addEventListener('click', closeHelpDrawer);
 sidebarJournalButton.addEventListener('click', () => {
-  setSidebarMode('journal');
+  void activateSidebarMode('journal');
 });
 sidebarNotesButton.addEventListener('click', () => {
-  setSidebarMode('note');
+  void activateSidebarMode('note');
 });
 sidebarNewNoteButton.addEventListener('click', () => {
   openNewNoteDialog();
