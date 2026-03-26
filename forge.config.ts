@@ -12,33 +12,14 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { mainConfig } from './webpack.main.config';
 import { rendererConfig } from './webpack.renderer.config';
 
-const windowsCertificateFile = process.env.WINDOWS_CERT_FILE;
-const windowsCertificatePassword = process.env.WINDOWS_CERT_PASSWORD ?? process.env.WINDOWS_CERTIFICATE_PASSWORD;
-const windowsTimestampServer =
-  process.env.WINDOWS_SIGN_TIMESTAMP_SERVER ?? process.env.WINDOWS_TIMESTAMP_SERVER ?? 'http://timestamp.digicert.com';
-
-const windowsSign =
-  windowsCertificateFile && windowsCertificatePassword
-    ? {
-        certificateFile: windowsCertificateFile,
-        certificatePassword: windowsCertificatePassword,
-        timestampServer: windowsTimestampServer,
-        description: 'mSlate',
-        website: 'https://github.com/advdk/mSlate',
-      }
-    : undefined;
-
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'mslate',
-    windowsSign,
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({
-      windowsSign,
-    }),
+    new MakerSquirrel({}),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),

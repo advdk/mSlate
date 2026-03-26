@@ -79,16 +79,6 @@ npm run publish
 
 This uses Electron Forge publishing and is intended for GitHub Releases.
 
-### Windows Code Signing
-
-Windows builds can be signed by setting the environment variables `WINDOWS_CERT_FILE` and `WINDOWS_CERT_PASSWORD` before running `npm run make` or `npm run publish`.
-
-- `WINDOWS_CERT_FILE`: absolute path to a `.pfx` code-signing certificate
-- `WINDOWS_CERT_PASSWORD`: password for the `.pfx` file
-- `WINDOWS_SIGN_TIMESTAMP_SERVER`: optional RFC 3161 timestamp server URL. Defaults to `http://timestamp.digicert.com`
-
-The Forge configuration signs both the packaged app binaries and the Squirrel installer when those variables are present. If they are absent, builds remain unsigned.
-
 ### Lint
 
 ```bash
@@ -190,15 +180,6 @@ The markdown files remain authoritative. The database exists only to speed up se
 2. Commit and push your changes
 3. Create and push a semver tag such as `v0.1.1`
 4. The release workflow in [.github/workflows/release.yml](.github/workflows/release.yml) publishes artifacts to GitHub Releases
-
-### GitHub Actions Secrets For Windows Signing
-
-Add these repository secrets if you want Windows artifacts from CI to be signed:
-
-- `WINDOWS_CERT_PFX_BASE64`: base64-encoded contents of the `.pfx` certificate
-- `WINDOWS_CERT_PASSWORD`: password for the `.pfx` certificate
-
-The Windows jobs in [.github/workflows/build.yml](.github/workflows/build.yml) and [.github/workflows/release.yml](.github/workflows/release.yml) restore the certificate only for the job, pass its path to Electron Forge, and delete it afterward.
 
 ### Notes
 
